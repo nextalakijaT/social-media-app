@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Know GOD App — Write Post</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/index.html" class="navbar-brand">Know GOD App</a>
+  <div class="navbar-nav">
+    <a href="/index.html" class="nav-link">Feed</a>
+    <a href="/dashboard.html" class="nav-link">My Posts</a>
+    <button class="btn btn-ghost btn-sm" id="nav-logout">Logout</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <h1 class="page-title" id="page-title">New Post</h1>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="alert alert-error"   id="error-msg"></div>
+      <div class="alert alert-success" id="success-msg"></div>
+
+      <div class="form-group">
+        <label class="form-label">Title</label>
+        <input type="text" id="title" class="form-control" placeholder="Give your post a title..." />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Content</label>
+        <textarea id="content" class="form-control" rows="10"
+          placeholder="Write your post content here..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">
+          Tags
+          <span style="color:var(--muted);font-weight:400">(comma separated, e.g. tech, javascript, news)</span>
+        </label>
+        <input type="text" id="tags" class="form-control" placeholder="tech, javascript, news" />
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="handleSave('draft')" id="draft-btn">
+          Save as Draft
+        </button>
+        <button class="btn btn-primary" onclick="handleSave('published')" id="publish-btn">
+          Publish Post
+        </button>
+        <a href="/dashboard.html" class="btn btn-ghost" style="margin-left:auto">Cancel</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+  requireAuth();
+
+  document.getElementById("nav-logout").addEventListener("click", () => {
+    clearAuth(); window.location.href = "/index.html";
+  });
+
+  // Check if we're editing an existing post
+  const editId = new URLSearchParams(window.location.search).get("id");
+
+  if (editId) {
+    document.getElementById("page-title").textContent = "Edit Post";
+    loadExistingPost();
+  }
+
+  async function loadExistingPost() {
+    const { ok, data } = await getPost(editId);
+    if (!ok) { window.location.href = "/dashboard.html"; return; }
+    const post = data.data;
+    document.getElementById("title").value   = post.title;
+    document.getElementById("content").value = post.content;
+    document.getElementById("tags").value    = (post.tags || []).join(", ");
+  }
+
+  async function handleSave(state) {
+    hideError("error-msg");
+    hideError("success-msg");
+
+    const title   = document.getElementById("title").value.trim();
+    const content = document.getElementById("content").value.trim();
+    const tagsRaw = document.getElementById("tags").value.trim();
+    const tags    = tagsRaw ? tagsRaw.split(",").map(t => t.trim()).filter(Boolean) : [];
+
+    if (!title)   { showError("error-msg", "Please add a title."); return; }
+    if (!content) { showError("error-msg", "Please add some content."); return; }
+
+    const body = { title, content, tags, state };
+
+    const draftBtn   = document.getElementById("draft-btn");
+    const publishBtn = document.getElementById("publish-btn");
+    draftBtn.disabled = publishBtn.disabled = true;
+
+    let result;
+    if (editId) {
+      result = await updatePost(editId, body);
+    } else {
+      result = await createPost(body);
+      // If creating a draft we need a second call to set state
+      if (result.ok && state === "published") {
+        result = await updatePost(result.data.data._id, { state: "published" });
+      }
+    }
+
+    if (result.ok) {
+      const msg = state === "published" ? "Post published!" : "Draft saved!";
+      showError("success-msg", msg);
+      document.getElementById("success-msg").style.display = "block";
+      setTimeout(() => window.location.href = "/dashboard.html", 1000);
+    } else {
+      const errMsg = result.data.errors
+        ? result.data.errors[0].msg
+        : (result.data.message || "Something went wrong.");
+      showError("error-msg", errMsg);
+      draftBtn.disabled = publishBtn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>

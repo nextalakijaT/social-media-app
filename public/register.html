@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Know GOD App — Register</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<div class="auth-wrapper">
+  <div class="auth-card card">
+    <div class="card-body">
+      <div class="auth-logo">Know GOD App</div>
+      <h2 style="text-align:center;margin-bottom:24px;font-size:1.3rem">Create your account</h2>
+
+      <div class="alert alert-error"   id="error-msg"></div>
+      <div class="alert alert-success" id="success-msg"></div>
+
+      <div style="display:flex;gap:12px">
+        <div class="form-group" style="flex:1">
+          <label class="form-label">First Name</label>
+          <input type="text" id="first_name" class="form-control" placeholder="John" />
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Last Name</label>
+          <input type="text" id="last_name" class="form-control" placeholder="Doe" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" id="username" class="form-control" placeholder="johndoe" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="email" class="form-control" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password <span style="color:var(--muted);font-weight:400">(min 6 characters)</span></label>
+        <input type="password" id="password" class="form-control" placeholder="••••••••" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bio <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+        <input type="text" id="bio" class="form-control" placeholder="Tell us about yourself..." />
+      </div>
+
+      <button class="btn btn-primary btn-full" id="register-btn" onclick="handleRegister()">
+        Create Account
+      </button>
+
+      <div class="auth-footer">
+        Already have an account? <a href="/login.html">Login</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+  redirectIfLoggedIn();
+
+  async function handleRegister() {
+    const btn = document.getElementById("register-btn");
+    hideError("error-msg");
+    hideError("success-msg");
+
+    const body = {
+      first_name: document.getElementById("first_name").value.trim(),
+      last_name:  document.getElementById("last_name").value.trim(),
+      username:   document.getElementById("username").value.trim(),
+      email:      document.getElementById("email").value.trim(),
+      password:   document.getElementById("password").value,
+      bio:        document.getElementById("bio").value.trim(),
+    };
+
+    if (!body.first_name || !body.last_name || !body.username || !body.email || !body.password) {
+      showError("error-msg", "Please fill in all required fields.");
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Creating account...";
+
+    const { ok, data } = await signup(body);
+
+    if (ok) {
+      saveAuth(data.token, data.user);
+      window.location.href = "/index.html";
+    } else {
+      const msg = data.errors ? data.errors[0].msg : (data.message || "Registration failed.");
+      showError("error-msg", msg);
+      btn.disabled = false;
+      btn.textContent = "Create Account";
+    }
+  }
+</script>
+</body>
+</html>

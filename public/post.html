@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Know GOD App — Post</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/index.html" class="navbar-brand">Know GOD App</a>
+  <div class="navbar-nav">
+    <a href="/index.html" class="nav-link">← Back to Feed</a>
+    <a href="/dashboard.html" class="nav-link" id="nav-dashboard" style="display:none">My Posts</a>
+    <button class="btn btn-ghost btn-sm" id="nav-logout" style="display:none">Logout</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div id="post-container"><div class="spinner"></div></div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+  if (isLoggedIn()) {
+    document.getElementById("nav-dashboard").style.display = "";
+    document.getElementById("nav-logout").style.display    = "";
+  }
+
+  document.getElementById("nav-logout")?.addEventListener("click", () => {
+    clearAuth(); window.location.href = "/index.html";
+  });
+
+  async function loadPost() {
+    const id = new URLSearchParams(window.location.search).get("id");
+    if (!id) { window.location.href = "/index.html"; return; }
+
+    const { ok, data } = await getPost(id);
+
+    if (!ok) {
+      document.getElementById("post-container").innerHTML = `
+        <div class="empty-state">
+          <div class="icon">🔍</div>
+          <h3>Post not found</h3>
+          <p><a href="/index.html">Go back to the feed</a></p>
+        </div>`;
+      return;
+    }
+
+    const post    = data.data;
+    const author  = post.author;
+    const initials = author
+      ? (author.first_name[0] + author.last_name[0]).toUpperCase()
+      : "??";
+    const tags = (post.tags || [])
+      .map(t => `<span class="tag">#${t}</span>`).join("");
+
+    const currentUser = getUser();
+    const isOwner = currentUser && author && currentUser.id === author._id;
+
+    document.title = `${post.title} — Know GOD App`;
+
+    document.getElementById("post-container").innerHTML = `
+      <div class="card">
+        <div class="card-body">
+          <div class="post-header" style="margin-bottom:20px">
+            <div class="avatar">${initials}</div>
+            <div>
+              <div class="post-author">
+                ${author ? `${author.first_name} ${author.last_name}` : "Unknown"}
+                <span style="color:var(--muted);font-weight:400">@${author?.username || ""}</span>
+              </div>
+              <div class="post-date">${formatDate(post.createdAt)}</div>
+            </div>
+            ${isOwner ? `
+              <div style="margin-left:auto;display:flex;gap:8px">
+                <a href="/create.html?id=${post._id}" class="btn btn-outline btn-sm">Edit</a>
+                <button class="btn btn-danger btn-sm" onclick="handleDelete('${post._id}')">Delete</button>
+              </div>` : ""}
+          </div>
+
+          <h1 class="post-full-title">${post.title}</h1>
+          <div class="post-tags" style="margin-bottom:20px">${tags}</div>
+          <div class="post-full-content">${post.content}</div>
+        </div>
+
+        <div class="card-footer">
+          <button class="like-btn" id="like-btn" onclick="handleLike('${post._id}')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <span id="like-count">${post.like_count}</span> likes
+          </button>
+          <span style="color:var(--muted);font-size:.85rem">💬 ${post.comment_count} comments</span>
+        </div>
+      </div>`;
+  }
+
+  async function handleLike(postId) {
+    if (!isLoggedIn()) { window.location.href = "/login.html"; return; }
+    const btn = document.getElementById("like-btn");
+    const isLiked = btn.classList.contains("liked");
+    const { ok, data } = isLiked ? await unlikePost(postId) : await likePost(postId);
+    if (ok) {
+      btn.classList.toggle("liked");
+      document.getElementById("like-count").textContent = data.like_count;
+    }
+  }
+
+  async function handleDelete(postId) {
+    if (!confirm("Are you sure you want to delete this post?")) return;
+    const { ok } = await deletePost(postId);
+    if (ok) window.location.href = "/dashboard.html";
+  }
+
+  loadPost();
+</script>
+</body>
+</html>

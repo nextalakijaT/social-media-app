@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Know GOD App — Feed</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <a href="/index.html" class="navbar-brand">Know GOD App</a>
+  <div class="navbar-nav" id="nav-links">
+    <a href="/index.html" class="nav-link active">Feed</a>
+    <a href="/login.html" class="nav-link" id="nav-login">Login</a>
+    <a href="/register.html" class="nav-link" id="nav-register">Register</a>
+    <a href="/dashboard.html" class="nav-link" id="nav-dashboard" style="display:none">My Posts</a>
+    <a href="/create.html" class="nav-link" id="nav-create" style="display:none">+ New Post</a>
+    <button class="btn btn-ghost btn-sm" id="nav-logout" style="display:none">Logout</button>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <h1 class="page-title">Latest Posts</h1>
+    <a href="/create.html" class="btn btn-primary" id="create-btn" style="display:none">+ New Post</a>
+  </div>
+
+  <!-- Search -->
+  <div class="search-bar">
+    <input type="text" id="search-input" class="form-control" placeholder="Search posts..." />
+    <button class="btn btn-primary" onclick="doSearch()">Search</button>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-row">
+    <select class="filter-select" id="sort-select" onchange="loadPosts()">
+      <option value="createdAt">Newest First</option>
+      <option value="like_count">Most Liked</option>
+      <option value="comment_count">Most Comments</option>
+    </select>
+    <select class="filter-select" id="order-select" onchange="loadPosts()">
+      <option value="desc">Descending</option>
+      <option value="asc">Ascending</option>
+    </select>
+    <input type="text" id="tag-filter" class="filter-select" placeholder="Filter by tag..." style="width:140px" />
+    <button class="btn btn-ghost btn-sm" onclick="loadPosts()">Apply</button>
+    <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Clear</button>
+  </div>
+
+  <!-- Posts list -->
+  <div id="posts-container">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination" id="pagination"></div>
+
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+  let currentPage = 1;
+  let currentSearch = "";
+
+  // ── Navbar ────────────────────────────────────────────────────────────────
+  if (isLoggedIn()) {
+    document.getElementById("nav-login").style.display    = "none";
+    document.getElementById("nav-register").style.display = "none";
+    document.getElementById("nav-dashboard").style.display = "";
+    document.getElementById("nav-create").style.display   = "";
+    document.getElementById("nav-logout").style.display   = "";
+    document.getElementById("create-btn").style.display   = "";
+  }
+
+  document.getElementById("nav-logout").addEventListener("click", () => {
+    clearAuth();
+    window.location.reload();
+  });
+
+  // ── Search ────────────────────────────────────────────────────────────────
+  document.getElementById("search-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") doSearch();
+  });
+
+  function doSearch() {
+    currentSearch = document.getElementById("search-input").value.trim();
+    currentPage = 1;
+    loadPosts();
+  }
+
+  function clearFilters() {
+    document.getElementById("search-input").value = "";
+    document.getElementById("tag-filter").value   = "";
+    document.getElementById("sort-select").value  = "createdAt";
+    document.getElementById("order-select").value = "desc";
+    currentSearch = "";
+    currentPage = 1;
+    loadPosts();
+  }
+
+  // ── Load posts ────────────────────────────────────────────────────────────
+  async function loadPosts() {
+    const container = document.getElementById("posts-container");
+    container.innerHTML = '<div class="spinner"></div>';
+
+    const params = {
+      page:    currentPage,
+      limit:   10,
+      sort_by: document.getElementById("sort-select").value,
+      order:   document.getElementById("order-select").value,
+    };
+
+    if (currentSearch) params.search = currentSearch;
+
+    const tag = document.getElementById("tag-filter").value.trim();
+    if (tag) params.tags = tag;
+
+    const { ok, data } = await getPosts(params);
+
+    if (!ok || !data.data.length) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">📭</div>
+          <h3>No posts found</h3>
+          <p>Try a different search or check back later.</p>
+        </div>`;
+      document.getElementById("pagination").innerHTML = "";
+      return;
+    }
+
+    container.innerHTML = data.data.map(renderPostCard).join("");
+    renderPagination(data.pagination);
+  }
+
+  // ── Render a post card ────────────────────────────────────────────────────
+  function renderPostCard(post) {
+    const initials = post.author
+      ? (post.author.first_name[0] + post.author.last_name[0]).toUpperCase()
+      : "??";
+    const authorName = post.author
+      ? `${post.author.first_name} ${post.author.last_name}`
+      : "Unknown";
+    const tags = (post.tags || [])
+      .map(t => `<span class="tag">#${t}</span>`).join("");
+
+    return `
+      <div class="card post-card">
+        <div class="card-body">
+          <div class="post-header">
+            <div class="avatar">${initials}</div>
+            <div>
+              <div class="post-author">${authorName}
+                <span style="color:var(--muted);font-weight:400">@${post.author?.username || ""}</span>
+              </div>
+              <div class="post-date">${formatDate(post.createdAt)}</div>
+            </div>
+          </div>
+          <div class="post-title"><a href="/post.html?id=${post._id}">${post.title}</a></div>
+          <div class="post-content">${post.content}</div>
+          <div class="post-tags">${tags}</div>
+        </div>
+        <div class="card-footer">
+          <button class="like-btn" onclick="handleLike('${post._id}', this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <span>${post.like_count}</span>
+          </button>
+          <span class="post-stats">
+            <span>💬 ${post.comment_count}</span>
+          </span>
+          <a href="/post.html?id=${post._id}" class="btn btn-ghost btn-sm" style="margin-left:auto">Read more</a>
+        </div>
+      </div>`;
+  }
+
+  // ── Like handler ──────────────────────────────────────────────────────────
+  async function handleLike(postId, btn) {
+    if (!isLoggedIn()) {
+      window.location.href = "/login.html";
+      return;
+    }
+    const isLiked = btn.classList.contains("liked");
+    const { ok, data } = isLiked ? await unlikePost(postId) : await likePost(postId);
+    if (ok) {
+      btn.classList.toggle("liked");
+      btn.querySelector("span").textContent = data.like_count;
+    }
+  }
+
+  // ── Pagination ────────────────────────────────────────────────────────────
+  function renderPagination(pagination) {
+    const { page, pages } = pagination;
+    if (pages <= 1) { document.getElementById("pagination").innerHTML = ""; return; }
+
+    let html = `<button class="page-btn" ${page === 1 ? "disabled" : ""}
+      onclick="changePage(${page - 1})">← Prev</button>`;
+
+    for (let i = 1; i <= pages; i++) {
+      html += `<button class="page-btn ${i === page ? "active" : ""}"
+        onclick="changePage(${i})">${i}</button>`;
+    }
+
+    html += `<button class="page-btn" ${page === pages ? "disabled" : ""}
+      onclick="changePage(${page + 1})">Next →</button>`;
+
+    document.getElementById("pagination").innerHTML = html;
+  }
+
+  function changePage(p) { currentPage = p; loadPosts(); window.scrollTo(0,0); }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  loadPosts();
+</script>
+</body>
+</html>

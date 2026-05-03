@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Know GOD App — My Posts</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/index.html" class="navbar-brand">Know GOD App</a>
+  <div class="navbar-nav">
+    <a href="/index.html" class="nav-link">Feed</a>
+    <a href="/dashboard.html" class="nav-link active">My Posts</a>
+    <a href="/create.html" class="nav-link">+ New Post</a>
+    <button class="btn btn-ghost btn-sm" id="nav-logout">Logout</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <h1 class="page-title">My Posts</h1>
+    <a href="/create.html" class="btn btn-primary">+ New Post</a>
+  </div>
+
+  <!-- State filter -->
+  <div class="filter-row" style="margin-bottom:20px">
+    <button class="btn btn-primary btn-sm"  id="filter-all"       onclick="filterPosts('')">All</button>
+    <button class="btn btn-ghost btn-sm"    id="filter-draft"     onclick="filterPosts('draft')">Drafts</button>
+    <button class="btn btn-ghost btn-sm"    id="filter-published" onclick="filterPosts('published')">Published</button>
+  </div>
+
+  <div id="posts-container"><div class="spinner"></div></div>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+  requireAuth();
+
+  document.getElementById("nav-logout").addEventListener("click", () => {
+    clearAuth(); window.location.href = "/index.html";
+  });
+
+  let currentState = "";
+  let currentPage  = 1;
+
+  function filterPosts(state) {
+    currentState = state;
+    currentPage  = 1;
+    ["all","draft","published"].forEach(s => {
+      document.getElementById(`filter-${s}`).className =
+        "btn btn-sm " + (s === (state || "all") ? "btn-primary" : "btn-ghost");
+    });
+    loadMyPosts();
+  }
+
+  async function loadMyPosts() {
+    const container = document.getElementById("posts-container");
+    container.innerHTML = '<div class="spinner"></div>';
+
+    const params = { page: currentPage, limit: 10 };
+    if (currentState) params.state = currentState;
+
+    const { ok, data } = await getMyPosts(params);
+
+    if (!ok || !data.data.length) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">✍️</div>
+          <h3>No posts yet</h3>
+          <p><a href="/create.html">Write your first post</a></p>
+        </div>`;
+      document.getElementById("pagination").innerHTML = "";
+      return;
+    }
+
+    container.innerHTML = data.data.map(renderDashboardCard).join("");
+    renderPagination(data.pagination);
+  }
+
+  function renderDashboardCard(post) {
+    return `
+      <div class="card post-card">
+        <div class="card-body">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <span class="badge badge-${post.state}">${post.state}</span>
+                <span style="color:var(--muted);font-size:.8rem">${formatDate(post.createdAt)}</span>
+              </div>
+              <div class="post-title" style="margin-bottom:6px">
+                ${post.state === "published"
+                  ? `<a href="/post.html?id=${post._id}">${post.title}</a>`
+                  : post.title}
+              </div>
+              <div style="color:var(--muted);font-size:.85rem">
+                ❤️ ${post.like_count} likes &nbsp;·&nbsp; 💬 ${post.comment_count} comments
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+              <a href="/create.html?id=${post._id}" class="btn btn-outline btn-sm">Edit</a>
+              ${post.state === "draft"
+                ? `<button class="btn btn-primary btn-sm" onclick="publishPost('${post._id}')">Publish</button>`
+                : ""}
+              <button class="btn btn-danger btn-sm" onclick="handleDelete('${post._id}')">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  async function publishPost(postId) {
+    const { ok } = await updatePost(postId, { state: "published" });
+    if (ok) loadMyPosts();
+  }
+
+  async function handleDelete(postId) {
+    if (!confirm("Delete this post?")) return;
+    const { ok } = await deletePost(postId);
+    if (ok) loadMyPosts();
+  }
+
+  function renderPagination(pagination) {
+    const { page, pages } = pagination;
+    if (pages <= 1) { document.getElementById("pagination").innerHTML = ""; return; }
+    let html = `<button class="page-btn" ${page===1?"disabled":""} onclick="changePage(${page-1})">← Prev</button>`;
+    for (let i = 1; i <= pages; i++)
+      html += `<button class="page-btn ${i===page?"active":""}" onclick="changePage(${i})">${i}</button>`;
+    html += `<button class="page-btn" ${page===pages?"disabled":""} onclick="changePage(${page+1})">Next →</button>`;
+    document.getElementById("pagination").innerHTML = html;
+  }
+
+  function changePage(p) { currentPage = p; loadMyPosts(); window.scrollTo(0,0); }
+
+  loadMyPosts();
+</script>
+</body>
+</html>
