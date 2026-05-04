@@ -81,6 +81,23 @@ const unfollowUser = (id) => apiFetch(`/users/${id}/follow`, { method: "DELETE" 
 const getFollowing = ()   => apiFetch("/users/me/following");
 const getFollowers = ()   => apiFetch("/users/me/followers");
 
+
+// ─── Comments ─────────────────────────────────────────────────────────────────
+
+const getComments = (postId) =>
+  apiFetch(`/posts/${postId}/comments`);
+
+const addComment = (postId, content) =>
+  apiFetch(`/posts/${postId}/comments`, {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  });
+
+const deleteComment = (postId, commentId) =>
+  apiFetch(`/posts/${postId}/comments/${commentId}`, {
+    method: "DELETE",
+  });
+
 // ─── UI Helpers ───────────────────────────────────────────────────────────────
 
 const showError = (elementId, message) => {

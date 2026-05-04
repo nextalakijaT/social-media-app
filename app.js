@@ -2,9 +2,10 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 
-const authRoutes = require("./routes/authRoutes");
-const postRoutes = require("./routes/postRoutes");
-const userRoutes = require("./routes/userRoutes");
+const authRoutes    = require("./routes/authRoutes");
+const postRoutes    = require("./routes/postRoutes");
+const userRoutes    = require("./routes/userRoutes");
+const commentRoutes = require("./routes/commentRoutes");
 
 const app = express();
 app.use(express.static('public'));
@@ -17,9 +18,10 @@ if (process.env.NODE_ENV !== "test") {
   app.use(morgan("dev"));
 }
 
-app.use("/api/auth", authRoutes);
-app.use("/api/posts", postRoutes);
-app.use("/api/users", userRoutes);
+app.use("/api/auth",                    authRoutes);
+app.use("/api/posts",                   postRoutes);
+app.use("/api/users",                   userRoutes);
+app.use("/api/posts/:id/comments",      commentRoutes);
 
 app.get("/", (req, res) => {
   res.json({
