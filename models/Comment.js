@@ -1,21 +1,25 @@
-const express = require("express");
-const {
-  getComments,
-  addComment,
-  deleteComment,
-} = require("../controllers/commentController");
-const { protect, optionalAuth } = require("../middleware/auth");
+const mongoose = require("mongoose");
 
-const router = express.Router({ mergeParams: true });
-// mergeParams: true lets us access :id from the parent route (postRoutes)
+const commentSchema = new mongoose.Schema(
+  {
+    content: {
+      type: String,
+      required: [true, "Comment content is required"],
+      trim: true,
+      maxlength: [500, "Comment cannot exceed 500 characters"],
+    },
+    author: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    post: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+      required: true,
+    },
+  },
+  { timestamps: true }
+);
 
-/**
- * GET    /api/posts/:id/comments             – Get all comments (public)
- * POST   /api/posts/:id/comments             – Add a comment (protected)
- * DELETE /api/posts/:id/comments/:commentId  – Delete a comment (protected)
- */
-router.get("/",                  optionalAuth, getComments);
-router.post("/",                 protect,      addComment);
-router.delete("/:commentId",     protect,      deleteComment);
-
-module.exports = router;
+module.exports = mongoose.model("Comment", commentSchema);
