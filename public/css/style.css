@@ -181,12 +181,13 @@ a:hover { text-decoration: underline; }
 .like-btn {
   background: none; border: none; cursor: pointer;
   display: flex; align-items: center; gap: 4px;
-  color: var(--muted); font-size: .85rem; padding: 4px 8px;
+  color: var(--muted); font-size: .85rem; padding: 6px 12px;
   border-radius: 6px; transition: all .15s;
+  border: 1.5px solid var(--border);
 }
-.like-btn:hover  { background: #fee2e2; color: var(--danger); }
-.like-btn.liked  { color: var(--danger); }
-.like-btn.liked svg { fill: var(--danger); }
+.like-btn:hover       { background: #fee2e2; color: var(--danger); border-color: var(--danger); }
+.like-btn.liked       { color: var(--danger); border-color: var(--danger); background: #fee2e2; }
+.like-btn.liked svg   { fill: var(--danger); stroke: var(--danger); }
 
 /* ── Forms ────────────────────────────────────────────────────────────────── */
 .form-group  { margin-bottom: 18px; }
