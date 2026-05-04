@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:3000/api";
+const BASE_URL = "https://social-media-app-bweh.onrender.com/api";
 
 // ─── Token helpers ────────────────────────────────────────────────────────────
 
